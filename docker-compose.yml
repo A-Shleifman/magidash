@@ -1,0 +1,37 @@
+version: "3.5"
+
+services:
+  mysql-db:
+    image: mysql:5
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: test123
+      MYSQL_DATABASE: definitions
+    volumes:
+      - ./database:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "mysql -ptest123 -e 'select 1'"]
+      interval: 5s
+      retries: 50
+
+  api:
+    build: .
+    container_name: magidash
+    depends_on:
+      - mysql-db
+    restart: always
+    tty: true
+    ports:
+      - 8080:8080
+    labels:
+      traefik.http.routers.magidash.rule: Host(`${DOMAIN}`)
+      traefik.http.routers.magidash.entrypoints: websecure
+      traefik.http.routers.magidash.tls.certresolver: cfdnsresolver
+      traefik.http.routers.magidash.tls.domains[0].main: ${DOMAIN}
+      traefik.http.routers.magidash.tls.domains[0].sans: www.${DOMAIN}
+
+networks:
+  default:
+    external:
+      name: traefik
